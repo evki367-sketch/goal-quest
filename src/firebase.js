@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBrbDe0yBx8Q-FRcVR3V2WcrMP9JYkclGU",
@@ -12,9 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-// Replace window.storage with Firebase-backed storage
-// This mimics the same API so the rest of the app doesn't need to change
 window.firebaseStorage = {
   get: async (key, shared) => {
     try {

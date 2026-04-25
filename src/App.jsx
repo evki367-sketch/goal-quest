@@ -399,23 +399,23 @@ function FriendRow({friend,onView,onRemove}){
 }
 
 function AuthScreen({onAuthed}){
-  const[mode,setMode]=useState("signin");const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[name,setName]=useState("");const[error,setError]=useState(null);
-  const hash=s=>{let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h+s.charCodeAt(i))|0;return h.toString(36);};
-  const loadUsers=()=>{try{return JSON.parse(localStorage.getItem("gq:users")||"{}");} catch{return{};}};
-  const saveUsers=u=>localStorage.setItem("gq:users",JSON.stringify(u));
-  const signIn=()=>{setError(null);if(!email.includes("@")){setError("Enter a valid email");return;}if(password.length<6){setError("Password: 6+ chars");return;}
-    const users=loadUsers(),user=users[email.toLowerCase()];if(!user){setError("No account. Try signing up.");return;}if(user.passwordHash!==hash(password)){setError("Wrong password.");return;}
-    onAuthed({uid:user.uid,name:user.name,email,provider:"password"});};
-  const signUp=()=>{setError(null);if(!name.trim()){setError("Enter a name");return;}if(!email.includes("@")){setError("Enter a valid email");return;}if(password.length<6){setError("Password: 6+ chars");return;}
-    const users=loadUsers(),key=email.toLowerCase();if(users[key]){setError("Account exists.");return;}const uid="u_"+hash(key)+"_"+Date.now().toString(36);
-    users[key]={name:name.trim(),passwordHash:hash(password),uid};saveUsers(users);onAuthed({uid,name:name.trim(),email,provider:"password"});};
-  const googleIn=()=>onAuthed({uid:"g_"+hash("demo@gmail.com"),name:"Google User",email:"demo@gmail.com",provider:"google"});
+  const[mode,setMode]=useState("signin");const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[name,setName]=useState("");const[error,setError]=useState(null);const[busy,setBusy]=useState(false);
+  const prettyError=code=>{if(code?.includes("invalid-email"))return"Invalid email.";if(code?.includes("email-already-in-use"))return"Account exists. Try signing in.";if(code?.includes("weak-password"))return"Password: 6+ chars.";
+    if(code?.includes("user-not-found")||code?.includes("wrong-password")||code?.includes("invalid-credential"))return"Wrong email or password.";if(code?.includes("too-many-requests"))return"Too many attempts. Wait a minute.";
+    if(code?.includes("popup-closed"))return"Sign-in cancelled.";return"Something went wrong.";};
+  const signIn=async()=>{setError(null);setBusy(true);try{const{getAuth,signInWithEmailAndPassword}=await import("firebase/auth");
+    const cred=await signInWithEmailAndPassword(getAuth(),email.trim(),password);onAuthed({uid:cred.user.uid,name:cred.user.displayName||email.split("@")[0],email:cred.user.email,provider:"password"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
+  const signUp=async()=>{setError(null);if(!name.trim()){setError("Enter a name");return;}setBusy(true);try{const{getAuth,createUserWithEmailAndPassword,updateProfile}=await import("firebase/auth");
+    const cred=await createUserWithEmailAndPassword(getAuth(),email.trim(),password);await updateProfile(cred.user,{displayName:name.trim()});
+    onAuthed({uid:cred.user.uid,name:name.trim(),email:cred.user.email,provider:"password"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
+  const googleIn=async()=>{setError(null);setBusy(true);try{const{getAuth,signInWithPopup,GoogleAuthProvider}=await import("firebase/auth");
+    const cred=await signInWithPopup(getAuth(),new GoogleAuthProvider());onAuthed({uid:cred.user.uid,name:cred.user.displayName||"User",email:cred.user.email,provider:"google"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
   return(
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100 p-4 flex items-center justify-center">
       <div className="w-full max-w-sm"><div className="text-center mb-6"><div className="inline-flex items-center gap-2 mb-2"><Sword className="text-indigo-400"/><h1 className="text-2xl font-bold">Goal Quest</h1></div><p className="text-sm text-slate-400">Sign in to save your progress</p></div>
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-5">
           <div className="flex gap-1 bg-slate-900 p-1 rounded-lg mb-4">{["signin","signup"].map(m=><button key={m} onClick={()=>{setMode(m);setError(null);}} className={`flex-1 py-2 text-sm rounded ${mode===m?"bg-indigo-600":"text-slate-400"}`}>{m==="signin"?"Sign in":"Sign up"}</button>)}</div>
-          <button onClick={googleIn} className="w-full py-2.5 bg-white text-slate-800 rounded flex items-center justify-center gap-2 font-medium text-sm hover:bg-slate-100 mb-3">
+          <button onClick={googleIn} disabled={busy} className="w-full py-2.5 bg-white text-slate-800 rounded flex items-center justify-center gap-2 font-medium text-sm hover:bg-slate-100 mb-3 disabled:opacity-60">
             <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
             Continue with Google</button>
           <div className="flex items-center gap-3 my-3"><div className="flex-1 h-px bg-slate-700"/><span className="text-xs text-slate-500">OR</span><div className="flex-1 h-px bg-slate-700"/></div>
@@ -423,14 +423,18 @@ function AuthScreen({onAuthed}){
           <div className="mb-3"><label className="text-xs text-slate-400 block mb-1">Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/></div>
           <div className="mb-4"><label className="text-xs text-slate-400 block mb-1">Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="6+ characters" onKeyDown={e=>{if(e.key==="Enter")(mode==="signin"?signIn:signUp)();}} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm"/></div>
           {error&&<div className="bg-red-900/40 border border-red-700/50 text-red-200 text-xs rounded p-2 mb-3">{error}</div>}
-          <button onClick={mode==="signin"?signIn:signUp} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded font-medium text-sm">{mode==="signin"?"Sign in":"Create account"}</button>
+          <button onClick={mode==="signin"?signIn:signUp} disabled={busy} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded font-medium text-sm disabled:opacity-60">{busy?"...":(mode==="signin"?"Sign in":"Create account")}</button>
         </div></div>
     </div>);
 }
 
 export default function App(){
-  const[authedUser,setAuthedUser]=useState(()=>{try{return JSON.parse(localStorage.getItem("gq:session")||"null");}catch{return null;}});
-  useEffect(()=>{if(authedUser)localStorage.setItem("gq:session",JSON.stringify(authedUser));else localStorage.removeItem("gq:session");},[authedUser]);
+  const[authedUser,setAuthedUser]=useState(null);const[loading,setLoading]=useState(true);
+  useEffect(()=>{(async()=>{const{getAuth,onAuthStateChanged}=await import("firebase/auth");
+    onAuthStateChanged(getAuth(),user=>{if(user)setAuthedUser({uid:user.uid,name:user.displayName||user.email?.split("@")[0]||"Hero",email:user.email,provider:user.providerData?.[0]?.providerId||"password"});
+      else setAuthedUser(null);setLoading(false);});})();},[]);
+  const signOut=async()=>{const{getAuth}=await import("firebase/auth");await getAuth().signOut();};
+  if(loading)return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">Loading...</div>;
   if(!authedUser)return <AuthScreen onAuthed={setAuthedUser}/>;
-  return <GoalQuestApp authedUser={authedUser} onSignOut={()=>setAuthedUser(null)}/>;
+  return <GoalQuestApp authedUser={authedUser} onSignOut={signOut}/>;
 }
