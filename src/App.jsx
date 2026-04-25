@@ -410,7 +410,8 @@ function AuthScreen({onAuthed}){
     const cred=await createUserWithEmailAndPassword(getAuth(),email.trim(),password);await updateProfile(cred.user,{displayName:name.trim()});
     onAuthed({uid:cred.user.uid,name:name.trim(),email:cred.user.email,provider:"password"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
   const googleIn=async()=>{setError(null);setBusy(true);try{const{getAuth,signInWithPopup,GoogleAuthProvider}=await import("firebase/auth");
-    const cred=await signInWithPopup(getAuth(),new GoogleAuthProvider());onAuthed({uid:cred.user.uid,name:cred.user.displayName||"User",email:cred.user.email,provider:"google"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
+    const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:"select_account"});
+    const cred=await signInWithPopup(getAuth(),provider);onAuthed({uid:cred.user.uid,name:cred.user.displayName||"User",email:cred.user.email,provider:"google"});}catch(e){setError(prettyError(e.code));}setBusy(false);};
   return(
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100 p-4 flex items-center justify-center">
       <div className="w-full max-w-sm"><div className="text-center mb-6"><div className="inline-flex items-center gap-2 mb-2"><Sword className="text-indigo-400"/><h1 className="text-2xl font-bold">Goal Quest</h1></div><p className="text-sm text-slate-400">Sign in to save your progress</p></div>
