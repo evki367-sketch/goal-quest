@@ -234,6 +234,14 @@ function GoalQuestApp({authedUser,onSignOut}){
 
   const myCode=userId==="anon"?"":userId.replace(/[^A-Z0-9]/gi,"").slice(0,6).toUpperCase();
   const pubKey=code=>`profilepub:${code}`;const reqKey=uid=>`friendreqs:${uid}`;
+
+  // Poll for incoming friend requests every 10 seconds
+  useEffect(()=>{if(!loaded||!authedUser)return;
+    const check=async()=>{try{const r=await window.storage.get(reqKey(userId),true);
+      if(r){const reqs=JSON.parse(r.value);if(reqs.length>0)setIncomingReqs(reqs);}
+    }catch(e){}};
+    check();const t=setInterval(check,10000);return()=>clearInterval(t);
+  },[loaded,authedUser,userId]);
   useEffect(()=>{if(!loaded||!authedUser||!myCode)return;const snap={uid:userId,code:myCode,name:profile.name,className:profile.className,level,xp,streak,questsDone:quests.filter(q=>q.done).length,dailiesDone:Object.keys(dailyDone).length,equipped,championBadges:championBadges.slice(-3),updatedAt:Date.now()};
     window.storage.set(pubKey(myCode),JSON.stringify(snap),true).catch(()=>{});},[loaded,authedUser,myCode,profile,level,xp,streak,quests,dailyDone,equipped,championBadges]);
   const sendFR=async()=>{const code=friendSearch.trim().toUpperCase();if(!code||code===myCode){showFlash("Enter a friend code");return;}if(friends.find(f=>f.code===code)){showFlash("Already friends!");return;}
