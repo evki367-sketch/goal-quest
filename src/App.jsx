@@ -242,14 +242,39 @@ function GoalQuestApp({authedUser,onSignOut}){
     }catch(e){}};
     check();const t=setInterval(check,10000);return()=>clearInterval(t);
   },[loaded,authedUser,userId]);
+
+  // Poll for accepted friend requests (so sender gets updated)
+  useEffect(()=>{if(!loaded||!authedUser)return;
+    const checkAccepts=async()=>{try{const r=await window.storage.get(`friendaccept:${userId}`,true);
+      if(!r)return;const accepts=JSON.parse(r.value);if(!accepts.length)return;
+      const newF=accepts.filter(a=>!friends.find(f=>f.uid===a.uid));
+      if(newF.length){setFriends(fs=>[...fs,...newF.map(a=>({uid:a.uid,code:a.code,name:a.name,addedAt:a.acceptedAt}))]);
+        setOutgoingReqs(rs=>rs.filter(r=>!newF.find(a=>a.uid===r.toUid)));
+        showFlash(`${newF.map(a=>a.name).join(", ")} accepted your request!`);}
+      await window.storage.delete(`friendaccept:${userId}`,true);
+    }catch(e){}};
+    checkAccepts();const t2=setInterval(checkAccepts,10000);return()=>clearInterval(t2);
+  },[loaded,authedUser,userId,friends]);
   useEffect(()=>{if(!loaded||!authedUser||!myCode)return;const snap={uid:userId,code:myCode,name:profile.name,className:profile.className,level,xp,streak,questsDone:quests.filter(q=>q.done).length,dailiesDone:Object.keys(dailyDone).length,equipped,championBadges:championBadges.slice(-3),updatedAt:Date.now()};
     window.storage.set(pubKey(myCode),JSON.stringify(snap),true).catch(()=>{});},[loaded,authedUser,myCode,profile,level,xp,streak,quests,dailyDone,equipped,championBadges]);
   const sendFR=async()=>{const code=friendSearch.trim().toUpperCase();if(!code||code===myCode){showFlash("Enter a friend code");return;}if(friends.find(f=>f.code===code)){showFlash("Already friends!");return;}
     try{const r=await window.storage.get(pubKey(code),true);if(!r){showFlash("Not found");return;}const target=JSON.parse(r.value);let reqs=[];try{const er=await window.storage.get(reqKey(target.uid),true);if(er)reqs=JSON.parse(er.value);}catch(e){}
       reqs.push({fromUid:userId,fromCode:myCode,fromName:profile.name,sentAt:Date.now()});await window.storage.set(reqKey(target.uid),JSON.stringify(reqs),true);
       setOutgoingReqs([...outgoingReqs,{toUid:target.uid,toCode:code,toName:target.name,sentAt:Date.now()}]);setFriendSearch("");showFlash(`Sent to ${target.name}!`);}catch(e){showFlash("Error");}};
-  const acceptFR=async req=>{setFriends([...friends,{uid:req.fromUid,code:req.fromCode,name:req.fromName,addedAt:Date.now()}]);
-    const rem=incomingReqs.filter(r=>r.fromUid!==req.fromUid);setIncomingReqs(rem);await window.storage.set(reqKey(userId),JSON.stringify(rem),true);showFlash(`${req.fromName} added!`);};
+  const acceptFR=async req=>{
+    // Add them to my friends
+    setFriends(f=>[...f,{uid:req.fromUid,code:req.fromCode,name:req.fromName,addedAt:Date.now()}]);
+    // Remove from my incoming
+    const rem=incomingReqs.filter(r=>r.fromUid!==req.fromUid);setIncomingReqs(rem);
+    await window.storage.set(reqKey(userId),JSON.stringify(rem),true);
+    // Add me to THEIR accepted list so they pick it up via polling
+    const acceptKey=`friendaccept:${req.fromUid}`;
+    let theirAccepts=[];
+    try{const ea=await window.storage.get(acceptKey,true);if(ea)theirAccepts=JSON.parse(ea.value);}catch(e){}
+    theirAccepts.push({uid:userId,code:myCode,name:profile.name,acceptedAt:Date.now()});
+    await window.storage.set(acceptKey,JSON.stringify(theirAccepts),true);
+    showFlash(`${req.fromName} added!`);
+  };
   const declineFR=async req=>{const rem=incomingReqs.filter(r=>r.fromUid!==req.fromUid);setIncomingReqs(rem);await window.storage.set(reqKey(userId),JSON.stringify(rem),true);};
   const removeFriend=uid=>{setFriends(friends.filter(f=>f.uid!==uid));showFlash("Removed");};
 
