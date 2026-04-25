@@ -77,6 +77,7 @@ function GoalQuestApp({authedUser,onSignOut}){
   const[newLeagueQuest,setNewLeagueQuest]=useState({name:""});const[leagueSubTab,setLeagueSubTab]=useState("board");
   const[chatText,setChatText]=useState("");const[myVote,setMyVote]=useState({});const chatEndRef=useRef(null);
   const userId=authedUser?.uid||"anon";
+  const USER_KEY = "goalquest:state:" + userId;
   const[friends,setFriends]=useState([]);const[incomingReqs,setIncomingReqs]=useState([]);
   const[outgoingReqs,setOutgoingReqs]=useState([]);const[friendSearch,setFriendSearch]=useState("");
   const[viewingProfile,setViewingProfile]=useState(null);const[profileModalData,setProfileModalData]=useState(null);
@@ -94,7 +95,7 @@ function GoalQuestApp({authedUser,onSignOut}){
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
   useEffect(()=>{if(leagueSubTab==="chat"&&chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:"smooth"});},[leagueData?.messages,leagueSubTab]);
 
-  useEffect(()=>{(async()=>{try{const r=await window.storage.get(STORAGE_KEY);if(r){const s=JSON.parse(r.value);
+  useEffect(()=>{(async()=>{try{const r=await window.storage.get(USER_KEY);if(r){const s=JSON.parse(r.value);
     setXp(s.xp||0);setGold(s.gold||0);setLevel(s.level||1);setStreak(s.streak||0);setLastDaily(s.lastDaily||null);
     setQuests(s.quests||[]);setDailies(s.dailies||DEFAULT_DAILIES);setDailyDone(s.dailyDone||{});
     const sv=s.shop||[];const si=new Set(sv.map(x=>x.id));const miss=DEFAULT_SHOP.filter(d=>!si.has(d.id));
@@ -107,7 +108,7 @@ function GoalQuestApp({authedUser,onSignOut}){
   }}catch(e){}setLoaded(true);})();},[]);
 
   useEffect(()=>{if(!loaded)return;const state={xp,gold,level,streak,lastDaily,quests,dailies,dailyDone,shop,inventory,profile,stats,history,league,friends,outgoingReqs,unlocked,equipped,championBadges,actionLog,activeBoost,activeEffects,templates};
-    window.storage.set(STORAGE_KEY,JSON.stringify(state)).catch(()=>{});},[loaded,xp,gold,level,streak,lastDaily,quests,dailies,dailyDone,shop,inventory,profile,stats,history,league,friends,outgoingReqs,unlocked,equipped,championBadges,actionLog,activeBoost,activeEffects,templates]);
+    window.storage.set(USER_KEY,JSON.stringify(state)).catch(()=>{});},[loaded,xp,gold,level,streak,lastDaily,quests,dailies,dailyDone,shop,inventory,profile,stats,history,league,friends,outgoingReqs,unlocked,equipped,championBadges,actionLog,activeBoost,activeEffects,templates]);
 
   const showFlash=m=>{setFlash(m);setTimeout(()=>setFlash(null),2500);};
   const pushNotif=(title,body)=>{
